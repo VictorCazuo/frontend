@@ -1,47 +1,37 @@
-# Next.js Project
+# 👩‍💻 Frontend – Comeat
 
-Este é um projeto [Next.js](https://nextjs.org/).
 
-## Pré-requisitos
+## 🎯 Visão geral
 
-Antes de executar este projeto, certifique-se de ter instalado:
+Este repositório é responsável pelo frontend da aplicação Comeat, uma plataforma de venda de produtos de feiras.
 
-- [Node.js](https://nodejs.org/) (versão 14.x ou superior recomendada)
-- [pnpm](https://pnpm.io/) (recomendado) ou npm ou yarn
 
-## Como iniciar
+## 📚 Tecnologias
 
-1. Clone o repositório:
+- **Next.js**
+- **React.js**
+- **ShadCN/UI**
+- **Tailwind CSS**
+- **TypeScript**
+- **Zod**
 
-```bash
-git clone https://github.com/IFMS-Delivery-Project/frontend.git
-cd frontend
-```
 
-2. Instale as dependências:
+## 🚀 Como executar
 
-```bash
-# Usando pnpm (recomendado)
-pnpm install
+Para clonar e executar este projeto, é necessário ter o **Git** e **Node.js** instalados em seu dispositivo. Após instalá-los, siga os passos abaixo:
 
-# Usando npm
-npm install
+1. Clonar projeto.
 
-# Usando yarn
-yarn
-```
+   ```bash
+   # Clonar projeto
+   git clone https://github.com/comeat-app/frontend.git
 
-3. Execute o servidor de desenvolvimento:
+   cd frontend
+   ```
 
-```bash
-# Usando pnpm
-pnpm dev
+2. Copie o arquivo `.env.example` para `.env` e ajuste as variáveis de ambiente conforme necessário.
 
-# Usando npm
-npm run dev
+3. Acesse o servidor em http://localhost:3000 para ter acesso ao sistema.
 
-# Usando yarn
-yarn dev
-```
 
-4. Abra [http://localhost:3000](http://localhost:3000) no seu navegador para ver o resultado.
+👨‍💻 Projeto desenvolvido por Henrique Matere, Jonatham Cordeiro Aguiar Luz, Victor Cazuo Hino Ayabe e Victor Hugo Azambuja.
