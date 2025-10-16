@@ -1,9 +1,11 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { IMaskInput } from "react-imask";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -33,28 +35,102 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 
-const formSchema = z.object({
-  email: z.string().email("Formato de e-mail inválido."),
-  nome: z.string().min(2, "O nome é obrigatório."),
-  sobrenome: z.string().min(2, "O sobrenome é obrigatório."),
-  diaNascimento: z.string().min(1, "Selecione o dia."),
-  mesNascimento: z.string().min(1, "Selecione o mês."),
-  anoNascimento: z.string().min(4, "Selecione o ano."),
-  cpf: z
-    .string()
-    .min(11, "CPF deve ter 11 dígitos.")
-    .regex(/^\d{11}$/, "CPF deve conter apenas números"),
-  telefone: z.string().min(11, "Telefone inválido.").optional(),
-  senha: z
-    .string()
-    .min(6, "A senha deve ter no mínimo 6 caracteres.")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
-      "Deve conter uma maiúscula, uma minúscula e um número."
-    ),
-});
+function CPFValido(cpf: string): boolean {
+  const apenasDigito = cpf.replace(/\D/g, ""); //tira o que não for digito
+  if (apenasDigito.length !== 11 || /^(\d)\1{10}$/.test(apenasDigito)) {
+    //verifica se todos os digitos são iguais
+    return false;
+  }
+
+  // Primeiro digito
+  let soma = 0;
+  for (let i = 0; i < 9; i++) {
+    soma += parseInt(apenasDigito.charAt(i), 10) * (10 - i);
+  }
+  let resto = soma % 11;
+  const primeiroDigito = resto < 2 ? 0 : 11 - resto;
+  if (primeiroDigito !== parseInt(apenasDigito.charAt(9), 10)) {
+    return false;
+  }
+
+  // Segundo dígito
+  soma = 0;
+  for (let i = 0; i < 10; i++) {
+    soma += parseInt(apenasDigito.charAt(i), 10) * (11 - i);
+  }
+  resto = soma % 11;
+  const segundoDigito = resto < 2 ? 0 : 11 - resto;
+  if (segundoDigito !== parseInt(apenasDigito.charAt(10), 10)) {
+    return false;
+  }
+
+  return true;
+}
+
+const formSchema = z
+  .object({
+    email: z.string().email("Formato de e-mail inválido."),
+    nome: z.string().min(2, "O nome é obrigatório."),
+    sobrenome: z.string().min(2, "O sobrenome é obrigatório."),
+    diaNascimento: z.string().min(1, "Selecione o dia."),
+    mesNascimento: z.string().min(1, "Selecione o mês."),
+    anoNascimento: z.string().min(4, "Selecione o ano."),
+    cpf: z.string().refine(CPFValido, {
+      message: "CPF inválido.",
+    }),
+    telefone: z
+      .string()
+      .optional()
+      .refine(
+        (telefone) => {
+          if (!telefone) return true;
+          const ApenasNumero = telefone.replace(/\D/g, ""); //tira o que não for numero
+          return ApenasNumero.length === 11;
+        },
+        {
+          message: "Telefone Inválido.",
+        }
+      ),
+    senha: z
+      .string()
+      .min(6, "A senha deve ter no mínimo 6 caracteres.")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
+        "Deve conter uma maiúscula, uma minúscula e um número."
+      ),
+  })
+  .refine(
+    (data) => {
+      const dia = parseInt(data.diaNascimento, 10);
+      const mes = parseInt(data.mesNascimento, 10);
+      const ano = parseInt(data.anoNascimento, 10);
+
+      if (isNaN(dia) || isNaN(mes) || isNaN(ano)) {
+        return true;
+      }
+
+      const dataObj = new Date(ano, mes - 1, dia);
+
+      return (
+        dataObj.getFullYear() === ano &&
+        dataObj.getMonth() === mes - 1 &&
+        dataObj.getDate() === dia
+      );
+    },
+    {
+      message: "Data de nascimento inválida.",
+      path: ["diaNascimento"],
+    }
+  );
 
 export default function PaginaCadastro() {
+  const [carregando, setCarregando] = useState(false);
+  const [mensagemAlerta, setMensagemAlerta] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     mode: "onChange",
@@ -70,11 +146,17 @@ export default function PaginaCadastro() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setMensagemAlerta(null);
+    setCarregando(true);
+    console.log("Simulando envio dos dados:", values);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    setMensagemAlerta({
+      type: "success",
+      message: "Cadastro concluído com sucesso! Você será redirecionado.",
+    });
+    setCarregando(false);
   }
-
-  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <Form {...form}>
@@ -266,7 +348,17 @@ export default function PaginaCadastro() {
                       CPF <span className="text-[var(--brand)]">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="000.000.000-00" {...field} />
+                      <IMaskInput
+                        mask="000.000.000-00"
+                        value={field.value}
+                        onAccept={(value: any) => field.onChange(value)}
+                        placeholder="000.000.000-00"
+                        className={cn(
+                          "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 h-9 w-full min-w-0 rounded-md border border-ring bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+                          "focus-visible:border-black focus-visible:ring-[0.3px]",
+                          "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
+                        )}
+                      ></IMaskInput>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -280,7 +372,17 @@ export default function PaginaCadastro() {
                   <FormItem>
                     <FormLabel>Telefone</FormLabel>
                     <FormControl>
-                      <Input placeholder="(XX) XXXXX-XXXX" {...field} />
+                      <IMaskInput
+                        mask="(00) 00000-0000"
+                        value={field.value}
+                        onAccept={(value: any) => field.onChange(value)}
+                        placeholder="(XX) XXXXX-XXXX"
+                        className={cn(
+                          "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 h-9 w-full min-w-0 rounded-md border border-ring bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+                          "focus-visible:border-black focus-visible:ring-[0.3px]",
+                          "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
+                        )}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -299,7 +401,7 @@ export default function PaginaCadastro() {
                   <div className="relative">
                     <FormControl>
                       <Input
-                        type={showPassword ? "text" : "password"}
+                        type={mostrarSenha ? "text" : "password"}
                         placeholder="Mínimo de 6 caracteres"
                         {...field}
                         className="pr-10"
@@ -308,10 +410,10 @@ export default function PaginaCadastro() {
 
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={() => setMostrarSenha(!mostrarSenha)}
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
                     >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      {mostrarSenha ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
                   <FormMessage />
@@ -330,8 +432,11 @@ export default function PaginaCadastro() {
               </Link>
             </CardDescription>
 
-            <Button type="submit" className="w-full bg-[var(--brand)]">
-              Continuar
+            <Button
+              type="submit"
+              className="w-full bg-[var(--brand)] text-[var(--brand)]-foreground hover:bg-[var(--brand)]/90 disabled={!form.formState.isValid || isLoading}"
+            >
+              {carregando ? "Carregando..." : "Continuar"}
             </Button>
           </CardContent>
 
